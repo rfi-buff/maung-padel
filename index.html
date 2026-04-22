@@ -822,39 +822,65 @@ function addRound(){
   setTimeout(function(){var s=document.getElementById('session-scroll');if(s)s.scrollTop=s.scrollHeight;},400);
 }
 
-// ── Score: points-only (free number input, no cap) ──
+// ── Score: total always = 21, entering one side auto-sets the other ──
+var TOTAL_POINTS=21;
 function changeScore(ri,ci,team,val){
   if(!currentUser)return;
   var num=parseInt(val,10);
   if(isNaN(num)||num<0)num=0;
+  if(num>TOTAL_POINTS)num=TOTAL_POINTS;
+  var other=TOTAL_POINTS-num;
   var update={};
-  if(team==='A')update.scoreA=num;
-  else update.scoreB=num;
+  if(team==='A'){update.scoreA=num;update.scoreB=other;}
+  else{update.scoreB=num;update.scoreA=other;}
+  // Update the other input immediately in the DOM for instant feedback
+  var otherTeam=team==='A'?'B':'A';
+  var otherEl=document.getElementById('sv-'+ri+'-'+ci+'-'+otherTeam);
+  if(otherEl)otherEl.value=other;
   db.ref('session/rounds/'+ri+'/courts/'+ci).update(update);
 }
 
 function courtHTML(ri,ci,court){
   var adminControls=currentUser
-    ?'<div class="score-block">'
-      +'<div class="score-row" style="flex-direction:column;gap:4px">'
-        +'<div style="font-size:10px;color:var(--text3);text-align:center">Team A</div>'
-        +'<input type="number" class="sc-input" id="sv-'+ri+'-'+ci+'-A" value="'+court.scoreA+'" min="0" onchange="changeScore('+ri+','+ci+',\'A\',this.value)" oninput="changeScore('+ri+','+ci+',\'A\',this.value)">'
-        +'<div style="font-size:11px;color:var(--text3);text-align:center">vs</div>'
-        +'<div style="font-size:10px;color:var(--text3);text-align:center">Team B</div>'
-        +'<input type="number" class="sc-input" id="sv-'+ri+'-'+ci+'-B" value="'+court.scoreB+'" min="0" onchange="changeScore('+ri+','+ci+',\'B\',this.value)" oninput="changeScore('+ri+','+ci+',\'B\',this.value)">'
-      +'</div>'
+    ?'<div class="score-block" style="min-width:110px">'
+        +'<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%">'
+          // Team A score row
+          +'<div style="display:flex;align-items:center;gap:6px;width:100%;justify-content:center">'
+            +'<button class="sc-btn" onclick="changeScore('+ri+','+ci+',\'A\',parseInt(document.getElementById(\'sv-'+ri+'-'+ci+'-A\').value||0)-1)">&#8722;</button>'
+            +'<input type="number" class="sc-input" id="sv-'+ri+'-'+ci+'-A" value="'+court.scoreA+'" min="0" max="'+TOTAL_POINTS+'" onchange="changeScore('+ri+','+ci+',\'A\',this.value)" oninput="changeScore('+ri+','+ci+',\'A\',this.value)">'
+            +'<button class="sc-btn" onclick="changeScore('+ri+','+ci+',\'A\',parseInt(document.getElementById(\'sv-'+ri+'-'+ci+'-A\').value||0)+1)">+</button>'
+          +'</div>'
+          +'<div style="font-size:10px;color:var(--text3);letter-spacing:0.04em">+ = 21</div>'
+          // Team B score row
+          +'<div style="display:flex;align-items:center;gap:6px;width:100%;justify-content:center">'
+            +'<button class="sc-btn" onclick="changeScore('+ri+','+ci+',\'B\',parseInt(document.getElementById(\'sv-'+ri+'-'+ci+'-B\').value||0)-1)">&#8722;</button>'
+            +'<input type="number" class="sc-input" id="sv-'+ri+'-'+ci+'-B" value="'+court.scoreB+'" min="0" max="'+TOTAL_POINTS+'" onchange="changeScore('+ri+','+ci+',\'B\',this.value)" oninput="changeScore('+ri+','+ci+',\'B\',this.value)">'
+            +'<button class="sc-btn" onclick="changeScore('+ri+','+ci+',\'B\',parseInt(document.getElementById(\'sv-'+ri+'-'+ci+'-B\').value||0)+1)">+</button>'
+          +'</div>'
+        +'</div>'
     +'</div>'
     :'<div style="text-align:center;flex-shrink:0;padding:0 8px">'
-      +'<div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:700;color:var(--text)" id="sv-'+ri+'-'+ci+'-A">'+court.scoreA+'</div>'
-      +'<div style="font-size:11px;color:var(--text3)">vs</div>'
-      +'<div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:700;color:var(--text)" id="sv-'+ri+'-'+ci+'-B">'+court.scoreB+'</div>'
+      +'<div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:700;color:var(--'+(court.scoreA>court.scoreB?'green':court.scoreA<court.scoreB?'red':'text')+')">'+court.scoreA+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">vs</div>'
+      +'<div style="font-family:\'Syne\',sans-serif;font-size:22px;font-weight:700;color:var(--'+(court.scoreB>court.scoreA?'green':court.scoreB<court.scoreA?'red':'text')+')">'+court.scoreB+'</div>'
     +'</div>';
+
+  var aWin=court.scoreA>court.scoreB,bWin=court.scoreB>court.scoreA;
   return '<div class="court-card">'
-    +'<div class="court-label">Court 1 — Points</div>'
-    +'<div class="match-row">'
-      +'<div class="team-block"><div class="team-p">'+court.teamA[0].name+'</div><div class="team-p">'+court.teamA[1].name+'</div></div>'
+    +'<div class="court-label" style="display:flex;justify-content:space-between;align-items:center">'
+      +'<span>Court 1</span>'
+      +'<span style="font-size:10px;color:var(--green)">First to 21 · total = 21</span>'
+    +'</div>'
+    +'<div class="match-row" style="align-items:center;gap:8px">'
+      +'<div class="team-block" style="'+(aWin?'color:var(--green)':'')+'">'
+        +'<div class="team-p" style="'+(aWin?'color:var(--green)':bWin?'color:var(--text2)':'')+'">'+court.teamA[0].name+'</div>'
+        +'<div class="team-p" style="'+(aWin?'color:var(--green)':bWin?'color:var(--text2)':'')+'">'+court.teamA[1].name+'</div>'
+      +'</div>'
       +adminControls
-      +'<div class="team-block r"><div class="team-p">'+court.teamB[0].name+'</div><div class="team-p">'+court.teamB[1].name+'</div></div>'
+      +'<div class="team-block r">'
+        +'<div class="team-p" style="'+(bWin?'color:var(--green)':aWin?'color:var(--text2)':'')+'">'+court.teamB[0].name+'</div>'
+        +'<div class="team-p" style="'+(bWin?'color:var(--green)':aWin?'color:var(--text2)':'')+'">'+court.teamB[1].name+'</div>'
+      +'</div>'
     +'</div>'
   +'</div>';
 }
