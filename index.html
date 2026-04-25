@@ -301,7 +301,7 @@ body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:r
     <div class="topbar-row">
       <div>
         <div class="topbar-title">Maung Padel</div>
-        <div class="topbar-sub">Rankings · Match: W=3 L=0 · Season: 1st=10 2nd=8 3rd=6 4th+=4</div>
+        <div class="topbar-sub">Rankings · W=3pts · L=0pts · Total = all sessions</div>
       </div>
       <button class="theme-btn" onclick="toggleTheme()">🌙</button>
     </div>
@@ -1170,9 +1170,9 @@ function finishSession(){
     updates['players/'+s.name+'/won']=s.won;
     updates['players/'+s.name+'/lost']=s.lost;
     updates['players/'+s.name+'/score']=s.score;
-    // Accumulate totalPts from all sessions
+    // Accumulate totalPts from all sessions (W*3 points)
     var pl=players.find(function(x){return x.name===s.name;});
-    updates['players/'+s.name+'/totalPts']=(pl?pl.totalPts||0:0)+s.rankPts;
+    updates['players/'+s.name+'/totalPts']=(pl?pl.totalPts||0:0)+s.score;
   });
 
   db.ref().update(updates);
@@ -1196,7 +1196,7 @@ function computeLiveStats(){
     });
   });
   var ranked=Object.values(stats).sort(function(a,b){return b.score-a.score||b.won-a.won;});
-  ranked.forEach(function(s,i){s.totalPts=getRankPts(i);});
+  ranked.forEach(function(s,i){s.totalPts=s.score;});
   return ranked;
 }
 
@@ -1284,14 +1284,13 @@ function renderHistory(){
     if(sess.ranking&&sess.ranking.length){
       html+='<div style="padding:12px 16px 0"><div style="font-family:\'Syne\',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:8px">Session Rankings</div>'
         +'<div style="background:var(--bg3);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:4px">'
-        +'<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 40px 40px;gap:2px;padding:6px 10px;border-bottom:0.5px solid var(--border)"><span style="font-size:9px;color:var(--text3)"></span><span style="font-size:9px;color:var(--text3)">Player</span><span style="font-size:9px;color:var(--text3);text-align:center">GP</span><span style="font-size:9px;color:var(--text3);text-align:center">W</span><span style="font-size:9px;color:var(--text3);text-align:center">L</span><span style="font-size:9px;color:var(--text3);text-align:center">Pts (W×3)</span><span style="font-size:9px;color:var(--text3);text-align:center">+Rank</span></div>';
+        +'<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 44px;gap:2px;padding:6px 10px;border-bottom:0.5px solid var(--border)"><span style="font-size:9px;color:var(--text3)"></span><span style="font-size:9px;color:var(--text3)">Player</span><span style="font-size:9px;color:var(--text3);text-align:center">GP</span><span style="font-size:9px;color:var(--text3);text-align:center">W</span><span style="font-size:9px;color:var(--text3);text-align:center">L</span><span style="font-size:9px;color:var(--text3);text-align:center">Pts (W×3)</span></div>';
       sess.ranking.forEach(function(p,i){
         var c=PALETTES[p.color%PALETTES.length];
-        html+='<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 40px 40px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border);align-items:center">'
+        html+='<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 44px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border);align-items:center">'
           +'<div style="font-size:12px;text-align:center">'+(medals[i]||('<span style="font-size:10px;color:var(--text3)">'+(i+1)+'</span>'))+'</div>'
           +'<div style="display:flex;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:50%;background:'+c.bg+';color:'+c.txt+';display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0">'+ini(p.name)+'</div><span style="font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">'+p.name+'</span></div>'
-          +'<div style="font-size:11px;color:var(--text2);text-align:center">'+p.played+'</div><div style="font-size:11px;color:var(--green);font-weight:500;text-align:center">'+p.won+'</div><div style="font-size:11px;color:var(--red);font-weight:500;text-align:center">'+p.lost+'</div><div style="font-size:11px;color:var(--text2);text-align:center">'+p.score+'</div>'
-          +'<div style="font-size:12px;font-weight:700;color:var(--text);text-align:center;font-family:\'Syne\',sans-serif">'+p.totalPts+'</div></div>';
+          +'<div style="font-size:11px;color:var(--text2);text-align:center">'+p.played+'</div><div style="font-size:11px;color:var(--green);font-weight:500;text-align:center">'+p.won+'</div><div style="font-size:11px;color:var(--red);font-weight:500;text-align:center">'+p.lost+'</div><div style="font-size:12px;font-weight:700;color:var(--green);text-align:center;font-family:\'Syne\',sans-serif">'+p.score+'</div></div>';
       });
       html+='</div></div>';
     }
@@ -1815,13 +1814,13 @@ function saveEditedScores(){
     var pl=players.find(function(x){return x.name===r.name;});
     if(!pl)return;
     var cur=updates['players/'+r.name+'/totalPts']!==undefined?updates['players/'+r.name+'/totalPts']:(pl.totalPts||0);
-    updates['players/'+r.name+'/totalPts']=Math.max(0,cur-(r.rankPts||0));
+    updates['players/'+r.name+'/totalPts']=Math.max(0,cur-(r.score||0));
   });
   newRanking.forEach(function(r){
     var pl=players.find(function(x){return x.name===r.name;});
     if(!pl)return;
     var cur=updates['players/'+r.name+'/totalPts']!==undefined?updates['players/'+r.name+'/totalPts']:(pl.totalPts||0);
-    updates['players/'+r.name+'/totalPts']=cur+r.rankPts;
+    updates['players/'+r.name+'/totalPts']=cur+(r.score||0);
   });
 
   db.ref('history/'+editingSess.key).update({rounds:editingSess.rounds,ranking:newRanking});
