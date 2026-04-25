@@ -78,10 +78,10 @@ body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:r
 .sc-btn:active{background:var(--border2)}
 .sc-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text);min-width:26px;text-align:center}
 .session-actions{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);width:100%;max-width:430px;padding:10px 16px;background:linear-gradient(to top,var(--bg) 60%,transparent);display:flex;gap:8px;z-index:50}
-.rank-hd{display:grid;grid-template-columns:28px 1fr 30px 30px 30px 30px 38px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border)}
+.rank-hd{display:grid;grid-template-columns:28px 1fr 30px 30px 30px 38px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border)}
 .rank-hd span{font-size:10px;color:var(--text3);text-align:center;font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
 .rank-hd span:nth-child(2){text-align:left}
-.rank-row-item{display:grid;grid-template-columns:28px 1fr 30px 30px 30px 30px 38px;gap:2px;padding:10px;border-bottom:0.5px solid var(--border);align-items:center}
+.rank-row-item{display:grid;grid-template-columns:28px 1fr 30px 30px 30px 38px;gap:2px;padding:10px;border-bottom:0.5px solid var(--border);align-items:center}
 .rank-row-item:last-child{border-bottom:none}
 .rank-cell{font-size:12px;color:var(--text2);text-align:center}
 .rank-cell.player{text-align:left;display:flex;align-items:center;gap:6px}
@@ -302,7 +302,7 @@ body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:r
     <div class="topbar-row">
       <div>
         <div class="topbar-title">Maung Padel</div>
-        <div class="topbar-sub">Rankings · 1st=10pts · 2nd=8pts · 3rd=6pts · 4th+=5pts</div>
+        <div class="topbar-sub">Rankings · 1st=10 · 2nd=8 · 3rd=6 · 4th-10th=4 · W=3pts</div>
       </div>
       <button class="theme-btn" onclick="toggleTheme()">🌙</button>
     </div>
@@ -1007,11 +1007,11 @@ function courtHTML(ri,ci,court){
 
   var sA=court.scoreA||0,sB=court.scoreB||0;
   var hasScore=sA+sB>0;
-  var aWins=hasScore&&sA>sB,bWins=hasScore&&sB>sA,draw=hasScore&&sA===sB;
-  var tAc=aWins?'var(--green)':draw?'var(--amber)':'var(--text)';
-  var tBc=bWins?'var(--green)':draw?'var(--amber)':'var(--text)';
-  var sAc=aWins?'var(--green)':draw?'var(--amber)':bWins?'var(--red)':'var(--text)';
-  var sBc=bWins?'var(--green)':draw?'var(--amber)':aWins?'var(--red)':'var(--text)';
+  var aWins=hasScore&&sA>sB,bWins=hasScore&&sB>sA;
+  var tAc=aWins?'var(--green)':'var(--text)';
+  var tBc=bWins?'var(--green)':'var(--text)';
+  var sAc=aWins?'var(--green)':bWins?'var(--red)':'var(--text)';
+  var sBc=bWins?'var(--green)':aWins?'var(--red)':'var(--text)';
 
   var statusLabel=isDone
     ?'<span style="font-size:10px;color:var(--text3)">🔒 Done</span>'
@@ -1098,7 +1098,7 @@ function getRankPts(rank){
   if(rank===0) return 10;
   if(rank===1) return 8;
   if(rank===2) return 6;
-  return 5;
+  return 4;
 }
 
 function finishSession(){
@@ -1111,32 +1111,29 @@ function finishSession(){
 
   // Step 1: compute game stats (GP, W, L, D, Score)
   var sessionStats={};
-  active.forEach(function(p){sessionStats[p.name]={name:p.name,color:p.color,played:0,won:0,lost:0,draw:0,score:0,rankPts:0};});
+  active.forEach(function(p){sessionStats[p.name]={name:p.name,color:p.color,played:0,won:0,lost:0,score:0,rankPts:0};});
   rounds.forEach(function(round){
     round.courts.forEach(function(court){
       var sA=court.scoreA||0,sB=court.scoreB||0;
       if(sA+sB===0)return;
-      var isDraw=sA===sB;
       court.teamA.forEach(function(p){
         var s=sessionStats[p.name];if(!s)return;
         s.played++;
-        if(isDraw){s.draw++;s.score+=sA;}
-        else if(sA>sB){s.won++;s.score+=sA;}
-        else{s.lost++;s.score+=sA;}
+        if(sA>sB){s.won++;s.score+=3;}
+        else s.lost++;
       });
       court.teamB.forEach(function(p){
         var s=sessionStats[p.name];if(!s)return;
         s.played++;
-        if(isDraw){s.draw++;s.score+=sB;}
-        else if(sB>sA){s.won++;s.score+=sB;}
-        else{s.lost++;s.score+=sB;}
+        if(sB>sA){s.won++;s.score+=3;}
+        else s.lost++;
       });
     });
   });
 
-  // Step 2: rank players by wins first, then total points scored
+  // Step 2: rank players by match score (W*3), then wins as tiebreak
   var sessionRanked=Object.values(sessionStats).sort(function(a,b){
-    return b.won-a.won||b.score-a.score||b.played-a.played;
+    return b.score-a.score||b.won-a.won||b.played-a.played;
   });
 
   // Step 3: assign rank PTS based on final position
@@ -1146,7 +1143,7 @@ function finishSession(){
 
   // Save to history with rank pts
   var sessionRanking=sessionRanked.map(function(s,i){
-    return {name:s.name,color:s.color,played:s.played,won:s.won,lost:s.lost,draw:s.draw,score:s.score,rankPts:s.rankPts,weeklyRank:i+1};
+    return {name:s.name,color:s.color,played:s.played,won:s.won,lost:s.lost,score:s.score,rankPts:s.rankPts,weeklyRank:i+1};
   });
 
   var histKey='session_'+now.getTime();
@@ -1164,7 +1161,6 @@ function finishSession(){
     updates['players/'+p.name+'/played']=0;
     updates['players/'+p.name+'/won']=0;
     updates['players/'+p.name+'/lost']=0;
-    updates['players/'+p.name+'/draw']=0;
     updates['players/'+p.name+'/score']=0;
     updates['players/'+p.name+'/active']=false;
     // Keep totalPts accumulating — don't reset it
@@ -1174,7 +1170,6 @@ function finishSession(){
     updates['players/'+s.name+'/played']=s.played;
     updates['players/'+s.name+'/won']=s.won;
     updates['players/'+s.name+'/lost']=s.lost;
-    updates['players/'+s.name+'/draw']=s.draw;
     updates['players/'+s.name+'/score']=s.score;
     // Accumulate totalPts from all sessions
     var pl=players.find(function(x){return x.name===s.name;});
@@ -1193,16 +1188,15 @@ function computeLiveStats(){
   var active=players.filter(function(p){return p.active;});
   if(!active.length)return null;
   var stats={};
-  active.forEach(function(p){stats[p.name]={name:p.name,color:p.color,played:0,won:0,lost:0,draw:0,score:0,totalPts:0};});
+  active.forEach(function(p){stats[p.name]={name:p.name,color:p.color,played:0,won:0,lost:0,score:0,totalPts:0};});
   rounds.forEach(function(round){
     round.courts.forEach(function(court){
       var sA=court.scoreA||0,sB=court.scoreB||0;if(sA+sB===0)return;
-      var isDraw=sA===sB;
-      court.teamA.forEach(function(p){var s=stats[p.name];if(!s)return;s.played++;if(isDraw){s.draw++;s.score+=sA;}else if(sA>sB){s.won++;s.score+=sA;}else{s.lost++;s.score+=sA;}});
-      court.teamB.forEach(function(p){var s=stats[p.name];if(!s)return;s.played++;if(isDraw){s.draw++;s.score+=sB;}else if(sB>sA){s.won++;s.score+=sB;}else{s.lost++;s.score+=sB;}});
+      court.teamA.forEach(function(p){var s=stats[p.name];if(!s)return;s.played++;if(sA>sB){s.won++;s.score+=3;}else s.lost++;});
+      court.teamB.forEach(function(p){var s=stats[p.name];if(!s)return;s.played++;if(sB>sA){s.won++;s.score+=3;}else s.lost++;});
     });
   });
-  var ranked=Object.values(stats).sort(function(a,b){return b.won-a.won||b.score-a.score;});
+  var ranked=Object.values(stats).sort(function(a,b){return b.score-a.score||b.won-a.won;});
   ranked.forEach(function(s,i){s.totalPts=getRankPts(i);});
   return ranked;
 }
@@ -1225,13 +1219,13 @@ function renderRankings(){
       +'</div>';
     if(live&&live.length){
       h+='<div style="background:var(--bg2);border-radius:var(--radius-sm);overflow:hidden">'
-        +'<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 28px 36px;gap:2px;padding:6px 10px;border-bottom:0.5px solid var(--border)"><span style="font-size:9px;color:var(--text3)"></span><span style="font-size:9px;color:var(--text3)">Player</span><span style="font-size:9px;color:var(--text3);text-align:center">GP</span><span style="font-size:9px;color:var(--text3);text-align:center">W</span><span style="font-size:9px;color:var(--text3);text-align:center">L</span><span style="font-size:9px;color:var(--text3);text-align:center">D</span><span style="font-size:9px;color:var(--text3);text-align:center">Sc</span></div>';
+        +'<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 36px;gap:2px;padding:6px 10px;border-bottom:0.5px solid var(--border)"><span style="font-size:9px;color:var(--text3)"></span><span style="font-size:9px;color:var(--text3)">Player</span><span style="font-size:9px;color:var(--text3);text-align:center">GP</span><span style="font-size:9px;color:var(--text3);text-align:center">W</span><span style="font-size:9px;color:var(--text3);text-align:center">L</span><span style="font-size:9px;color:var(--text3);text-align:center">D</span><span style="font-size:9px;color:var(--text3);text-align:center">Sc</span></div>';
       live.forEach(function(p,i){
         var c=PALETTES[p.color%PALETTES.length];
         h+='<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 28px 36px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border);align-items:center">'
           +'<div style="font-size:12px;text-align:center">'+(medals[i]||('<span style="font-size:10px;color:var(--text3)">'+(i+1)+'</span>'))+'</div>'
           +'<div style="display:flex;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:50%;background:'+c.bg+';color:'+c.txt+';display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0">'+ini(p.name)+'</div><span style="font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:65px">'+p.name+'</span></div>'
-          +'<div style="font-size:11px;color:var(--text2);text-align:center">'+p.played+'</div><div style="font-size:11px;color:var(--green);font-weight:500;text-align:center">'+p.won+'</div><div style="font-size:11px;color:var(--red);font-weight:500;text-align:center">'+p.lost+'</div><div style="font-size:11px;color:var(--amber);font-weight:500;text-align:center">'+p.draw+'</div><div style="font-size:11px;color:var(--text2);text-align:center">'+p.score+'</div>'
+          +'<div style="font-size:11px;color:var(--text2);text-align:center">'+p.played+'</div><div style="font-size:11px;color:var(--green);font-weight:500;text-align:center">'+p.won+'</div><div style="font-size:11px;color:var(--red);font-weight:500;text-align:center">'+p.lost+'</div><div style="font-size:11px;color:var(--text2);text-align:center">'+p.score+'</div>'
         +'</div>';
       });
       h+='</div>';
@@ -1246,7 +1240,7 @@ function renderRankings(){
     sorted.forEach(function(p,i){
       h+='<div class="rank-row-item"><div class="rank-cell" style="font-size:14px">'+(medals[i]||('<span style="font-size:11px;color:var(--text3)">'+(i+1)+'</span>'))+'</div>'
         +'<div class="rank-cell player">'+avEl(p,22)+'<span class="rank-name">'+p.name+'</span></div>'
-        +'<div class="rank-cell">'+p.played+'</div><div class="rank-cell won">'+p.won+'</div><div class="rank-cell lost">'+p.lost+'</div><div class="rank-cell draw">'+p.draw+'</div><div class="rank-cell">'+p.score+'</div>'
+        +'<div class="rank-cell">'+p.played+'</div><div class="rank-cell won">'+p.won+'</div><div class="rank-cell lost">'+p.lost+'</div><div class="rank-cell pts">'+p.totalPts+'</div>'
       +'</div>';
     });
     h+='</div><div style="font-size:10px;color:var(--text3);text-align:center;padding-bottom:8px">GP \u00b7 W \u00b7 L \u00b7 D \u00b7 Score</div>';
@@ -1291,13 +1285,13 @@ function renderHistory(){
     if(sess.ranking&&sess.ranking.length){
       html+='<div style="padding:12px 16px 0"><div style="font-family:\'Syne\',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);margin-bottom:8px">Session Rankings</div>'
         +'<div style="background:var(--bg3);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:4px">'
-        +'<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 28px 36px 32px;gap:2px;padding:6px 10px;border-bottom:0.5px solid var(--border)"><span style="font-size:9px;color:var(--text3)"></span><span style="font-size:9px;color:var(--text3)">Player</span><span style="font-size:9px;color:var(--text3);text-align:center">GP</span><span style="font-size:9px;color:var(--text3);text-align:center">W</span><span style="font-size:9px;color:var(--text3);text-align:center">L</span><span style="font-size:9px;color:var(--text3);text-align:center">D</span><span style="font-size:9px;color:var(--text3);text-align:center">Score</span><span style="font-size:9px;color:var(--text3);text-align:center">Pts</span></div>';
+        +'<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 36px 32px;gap:2px;padding:6px 10px;border-bottom:0.5px solid var(--border)"><span style="font-size:9px;color:var(--text3)"></span><span style="font-size:9px;color:var(--text3)">Player</span><span style="font-size:9px;color:var(--text3);text-align:center">GP</span><span style="font-size:9px;color:var(--text3);text-align:center">W</span><span style="font-size:9px;color:var(--text3);text-align:center">L</span><span style="font-size:9px;color:var(--text3);text-align:center">Score</span><span style="font-size:9px;color:var(--text3);text-align:center">Pts</span></div>';
       sess.ranking.forEach(function(p,i){
         var c=PALETTES[p.color%PALETTES.length];
-        html+='<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 28px 36px 32px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border);align-items:center">'
+        html+='<div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 36px 32px;gap:2px;padding:8px 10px;border-bottom:0.5px solid var(--border);align-items:center">'
           +'<div style="font-size:12px;text-align:center">'+(medals[i]||('<span style="font-size:10px;color:var(--text3)">'+(i+1)+'</span>'))+'</div>'
           +'<div style="display:flex;align-items:center;gap:5px"><div style="width:20px;height:20px;border-radius:50%;background:'+c.bg+';color:'+c.txt+';display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0">'+ini(p.name)+'</div><span style="font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60px">'+p.name+'</span></div>'
-          +'<div style="font-size:11px;color:var(--text2);text-align:center">'+p.played+'</div><div style="font-size:11px;color:var(--green);font-weight:500;text-align:center">'+p.won+'</div><div style="font-size:11px;color:var(--red);font-weight:500;text-align:center">'+p.lost+'</div><div style="font-size:11px;color:var(--amber);font-weight:500;text-align:center">'+p.draw+'</div><div style="font-size:11px;color:var(--text2);text-align:center">'+p.score+'</div>'
+          +'<div style="font-size:11px;color:var(--text2);text-align:center">'+p.played+'</div><div style="font-size:11px;color:var(--green);font-weight:500;text-align:center">'+p.won+'</div><div style="font-size:11px;color:var(--red);font-weight:500;text-align:center">'+p.lost+'</div><div style="font-size:11px;color:var(--text2);text-align:center">'+p.score+'</div>'
           +'<div style="font-size:12px;font-weight:700;color:var(--text);text-align:center;font-family:\'Syne\',sans-serif">'+p.totalPts+'</div></div>';
       });
       html+='</div></div>';
@@ -1310,10 +1304,10 @@ function renderHistory(){
         html+='<div class="hist-round-hd">'+lbl+sit+'</div>';
         round.courts.forEach(function(court,ci){
           var sA=court.scoreA,sB=court.scoreB;
-          var isDraw=sA===sB,aWin=sA>sB,bWin=sB>sA;
+          var aWin=sA>sB,bWin=sB>sA;
           html+='<div class="hist-match"><div class="hist-team"><div class="hist-name">'+court.teamA[0]+'</div><div class="hist-name">'+court.teamA[1]+'</div></div>'
             +'<div class="hist-score-block"><div style="font-size:9px;color:var(--text3);margin-bottom:2px">Court '+(ci+1)+'</div>'
-            +'<div class="hist-score-row"><div class="hist-score '+(aWin?'win':isDraw?'draw':'lose')+'">'+sA+'</div><div class="hist-sep">\u2013</div><div class="hist-score '+(bWin?'win':isDraw?'draw':'lose')+'">'+sB+'</div></div></div>'
+            +'<div class="hist-score-row"><div class="hist-score '+(aWin?'win':'lose')+'">'+sA+'</div><div class="hist-sep">\u2013</div><div class="hist-score '+(bWin?'win':'lose')+'">'+sB+'</div></div></div>'
             +'<div class="hist-team r"><div class="hist-name">'+court.teamB[0]+'</div><div class="hist-name">'+court.teamB[1]+'</div></div></div>';
         });
       });
@@ -1340,7 +1334,7 @@ function resetAll(){
   var updates={};
   players.forEach(function(p){
     updates['players/'+p.name+'/played']=0;updates['players/'+p.name+'/won']=0;updates['players/'+p.name+'/lost']=0;
-    updates['players/'+p.name+'/draw']=0;updates['players/'+p.name+'/score']=0;updates['players/'+p.name+'/totalPts']=0;updates['players/'+p.name+'/active']=false;
+    updates['players/'+p.name+'/score']=0;updates['players/'+p.name+'/totalPts']=0;updates['players/'+p.name+'/active']=false;
   });
   db.ref().update(updates);
   db.ref('history').remove();
@@ -1537,10 +1531,7 @@ function renderPrCard(){
           +'<div style="font-family:\'Syne\',sans-serif;font-size:20px;font-weight:700;color:var(--red)">'+histLost+'</div>'
           +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Lost</div>'
         +'</div>'
-        +'<div style="flex:1;padding:10px">'
-          +'<div style="font-family:\'Syne\',sans-serif;font-size:20px;font-weight:700;color:var(--amber)">'+histDraw+'</div>'
-          +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em">Draw</div>'
-        +'</div>'
+        
       +'</div>'
 
       // GP + Win%
@@ -1789,7 +1780,7 @@ function saveEditedScores(){
   var activePlayers=editingSess.players||[];
   activePlayers.forEach(function(name){
     var pl=players.find(function(x){return x.name===name;});
-    sessionStats[name]={name:name,color:pl?pl.color:0,played:0,won:0,lost:0,draw:0,score:0,rankPts:0};
+    sessionStats[name]={name:name,color:pl?pl.color:0,played:0,won:0,lost:0,score:0,rankPts:0};
   });
 
   editingSess.rounds.forEach(function(round){
@@ -1797,27 +1788,26 @@ function saveEditedScores(){
     courts.forEach(function(court){
       var sA=court.scoreA||0,sB=court.scoreB||0;
       if(sA+sB===0)return;
-      var isDraw=sA===sB;
       var teamA=normalizeArray(court.teamA).map(function(x){return x&&x.name?x.name:x;});
       var teamB=normalizeArray(court.teamB).map(function(x){return x&&x.name?x.name:x;});
       teamA.forEach(function(name){
         var s=sessionStats[name];if(!s)return;
         s.played++;
-        if(isDraw){s.draw++;s.score+=sA;}else if(sA>sB){s.won++;s.score+=sA;}else{s.lost++;s.score+=sA;}
+        if(sA>sB){s.won++;s.score+=3;}else s.lost++;
       });
       teamB.forEach(function(name){
         var s=sessionStats[name];if(!s)return;
         s.played++;
-        if(isDraw){s.draw++;s.score+=sB;}else if(sB>sA){s.won++;s.score+=sB;}else{s.lost++;s.score+=sB;}
+        if(sB>sA){s.won++;s.score+=3;}else s.lost++;
       });
     });
   });
 
-  var ranked=Object.values(sessionStats).sort(function(a,b){return b.won-a.won||b.score-a.score;});
+  var ranked=Object.values(sessionStats).sort(function(a,b){return b.score-a.score||b.won-a.won;});
   ranked.forEach(function(s,i){s.rankPts=getRankPts(i);});
 
   var newRanking=ranked.map(function(s,i){
-    return {name:s.name,color:s.color,played:s.played,won:s.won,lost:s.lost,draw:s.draw,score:s.score,rankPts:s.rankPts,weeklyRank:i+1};
+    return {name:s.name,color:s.color,played:s.played,won:s.won,lost:s.lost,score:s.score,rankPts:s.rankPts,weeklyRank:i+1};
   });
 
   var oldRanking=editingSess.ranking||[];
