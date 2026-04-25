@@ -1093,6 +1093,42 @@ function renderSession(){
   if(sr)sr.innerHTML=html;
 }
 
+
+// ── Head-to-head: build win map from rounds ──
+function buildH2H(roundsData){
+  var h2h={};
+  roundsData.forEach(function(round){
+    if(!round||!round.courts)return;
+    var courts=normalizeArray(round.courts);
+    courts.forEach(function(court){
+      var sA=court.scoreA||0,sB=court.scoreB||0;
+      if(sA+sB===0)return;
+      var tA=normalizeArray(court.teamA).map(function(x){return x&&x.name?x.name:x;});
+      var tB=normalizeArray(court.teamB).map(function(x){return x&&x.name?x.name:x;});
+      if(sA>sB){
+        // teamA wins
+        tA.forEach(function(a){tB.forEach(function(b){
+          if(!h2h[a])h2h[a]={};
+          h2h[a][b]=(h2h[a][b]||0)+1;
+        });});
+      } else if(sB>sA){
+        // teamB wins
+        tB.forEach(function(b){tA.forEach(function(a){
+          if(!h2h[b])h2h[b]={};
+          h2h[b][a]=(h2h[b][a]||0)+1;
+        });});
+      }
+    });
+  });
+  return h2h;
+}
+
+// Returns >0 if a beats b head-to-head, <0 if b beats a, 0 if equal
+function h2hCompare(nameA,nameB,h2h){
+  var aWins=(h2h[nameA]&&h2h[nameA][nameB])||0;
+  var bWins=(h2h[nameB]&&h2h[nameB][nameA])||0;
+  return bWins-aWins; // sort descending: a ranks higher if aWins > bWins
+}
 function getRankPts(rank){
   if(rank===0) return 10;
   if(rank===1) return 8;
@@ -1130,9 +1166,10 @@ function finishSession(){
     });
   });
 
-  // Step 2: rank players by match score (W*3), then wins as tiebreak
+  // Step 2: rank by score (W*3), then wins, then head-to-head
+  var h2hMap=buildH2H(rounds);
   var sessionRanked=Object.values(sessionStats).sort(function(a,b){
-    return b.score-a.score||b.won-a.won||b.played-a.played;
+    return b.score-a.score||b.won-a.won||h2hCompare(a.name,b.name,h2hMap)||b.played-a.played;
   });
 
   // Step 3: assign rank PTS based on final position
@@ -1195,7 +1232,8 @@ function computeLiveStats(){
       court.teamB.forEach(function(p){var s=stats[p.name];if(!s)return;s.played++;if(sB>sA){s.won++;s.score+=3;}else s.lost++;});
     });
   });
-  var ranked=Object.values(stats).sort(function(a,b){return b.score-a.score||b.won-a.won;});
+  var h2hMapLive=buildH2H(rounds);
+  var ranked=Object.values(stats).sort(function(a,b){return b.score-a.score||b.won-a.won||h2hCompare(a.name,b.name,h2hMapLive);});
   ranked.forEach(function(s,i){s.totalPts=s.score;});
   return ranked;
 }
@@ -1231,7 +1269,22 @@ function renderRankings(){
     }else{h+='<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0">Score matches to see live rankings</div>';}
     h+='</div>';
   }
-  var sorted=players.filter(function(p){return p.played>0;}).sort(function(a,b){return b.totalPts-a.totalPts||b.score-a.score;});
+  // Build season-wide h2h from all history sessions
+  var seasonH2H={};
+  sessionHistory.forEach(function(sess){
+    if(sess.rounds){
+      var sh=buildH2H(normalizeArray(sess.rounds));
+      Object.keys(sh).forEach(function(a){
+        Object.keys(sh[a]).forEach(function(b){
+          if(!seasonH2H[a])seasonH2H[a]={};
+          seasonH2H[a][b]=(seasonH2H[a][b]||0)+sh[a][b];
+        });
+      });
+    }
+  });
+  var sorted=players.filter(function(p){return p.played>0;}).sort(function(a,b){
+    return b.totalPts-a.totalPts||b.score-a.score||h2hCompare(a.name,b.name,seasonH2H);
+  });
   if(sorted.length){
     h+='<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Season total</div>'
       +'<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px">'
@@ -1801,7 +1854,8 @@ function saveEditedScores(){
     });
   });
 
-  var ranked=Object.values(sessionStats).sort(function(a,b){return b.score-a.score||b.won-a.won;});
+  var h2hMapEdit=buildH2H(editingSess.rounds);
+  var ranked=Object.values(sessionStats).sort(function(a,b){return b.score-a.score||b.won-a.won||h2hCompare(a.name,b.name,h2hMapEdit);});
   ranked.forEach(function(s,i){s.rankPts=getRankPts(i);});
 
   var newRanking=ranked.map(function(s,i){
