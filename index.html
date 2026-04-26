@@ -795,7 +795,7 @@ function renderPills(){
   if(!list)return;
   list.innerHTML=players.map(function(p,i){
     var c=PALETTES[p.color%PALETTES.length];
-    return '<div class="pill '+(p.active?'on':'')+'" onclick="'+(isAdmin?'togglePlayer(\''+p.name+'\')':'void(0)')+'" style="'+(isAdmin?'':'cursor:default')+'">'
+    return '<div class="pill '+(p.active?'on':'')+'" onclick="'+(currentUser?'togglePlayer(\''+p.name+'\')':'void(0)')+'" style="'+(currentUser?'':'cursor:default')+'">'
       +'<div class="pill-av" style="background:'+c.bg+';color:'+c.txt+'">'+ini(p.name)+'</div>'
       +p.name
       +(isAdmin?'<span class="pill-x" onclick="removePlayer(event,\''+p.name+'\')">&#x2715;</span>':'')
