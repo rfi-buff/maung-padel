@@ -465,8 +465,15 @@ var auth=firebase.auth();
 auth.useDeviceLanguage();
 
 // Handle redirect result (for Google sign-in redirect fallback)
-auth.getRedirectResult().catch(function(e){
-  if(e&&e.message) document.getElementById('auth-err').textContent=e.message;
+auth.getRedirectResult().then(function(result){
+  if(result&&result.user){
+    // User signed in via redirect — onAuthStateChanged will handle the rest
+  }
+}).catch(function(e){
+  if(e&&e.message){
+    var errEl=document.getElementById('auth-err');
+    if(errEl) errEl.textContent=e.message;
+  }
 });
 
 var PALETTES=[
@@ -527,23 +534,32 @@ function toggleAuthMode(){
 
 function signInGoogle(){
   var provider=new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(function(e){
-    // Fallback to redirect if popup blocked
+  provider.addScope('email');
+  var errEl=document.getElementById('auth-err');
+  if(errEl) errEl.textContent='';
+  auth.signInWithPopup(provider).then(function(result){
+    // Success handled by onAuthStateChanged
+  }).catch(function(e){
     if(e.code==='auth/popup-blocked'||e.code==='auth/popup-closed-by-user'||e.code==='auth/cancelled-popup-request'){
+      // Fallback to redirect
       auth.signInWithRedirect(provider);
     } else {
-      document.getElementById('auth-err').textContent=e.message;
+      if(errEl) errEl.textContent=e.message||'Google sign-in failed. Please try again.';
     }
   });
 }
 
 function signInEmail(){
+  var errEl=document.getElementById('auth-err');
+  if(errEl) errEl.textContent='';
   var email=document.getElementById('auth-email').value.trim();
   var pass=document.getElementById('auth-password').value;
-  if(!email||!pass){document.getElementById('auth-err').textContent='Please enter email and password.';return;}
+  if(!email||!pass){if(errEl) errEl.textContent='Please enter email and password.';return;}
   var fn=authMode==='signin'?auth.signInWithEmailAndPassword.bind(auth):auth.createUserWithEmailAndPassword.bind(auth);
-  fn(email,pass).catch(function(e){
-    document.getElementById('auth-err').textContent=e.message;
+  fn(email,pass).then(function(){
+    // Success handled by onAuthStateChanged
+  }).catch(function(e){
+    if(errEl) errEl.textContent=e.message||'Sign in failed. Please try again.';
   });
 }
 
@@ -621,10 +637,18 @@ auth.onAuthStateChanged(function(user){
   if(user){
     currentUser=user;
     isGuest=false;
-    var emailKey=user.email.replace(/\./g,'_');
+    // Some providers (e.g. phone) may not have email
+    var emailKey=user.email?user.email.replace(/\./g,'_'):'';
     db.ref('admins').once('value',function(snap){
       var admins=snap.val()||{};
-      isAdmin=!!admins[emailKey];
+      isAdmin=emailKey?!!admins[emailKey]:false;
+      hideAuth();
+      applyAdminUI();
+      if(!isFirebaseInited) initFirebase();
+    }).catch(function(e){
+      // If DB rules block anonymous read of admins, still let user in as non-admin
+      console.warn('Admin check failed:',e.message);
+      isAdmin=false;
       hideAuth();
       applyAdminUI();
       if(!isFirebaseInited) initFirebase();
