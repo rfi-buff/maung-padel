@@ -637,23 +637,28 @@ auth.onAuthStateChanged(function(user){
   if(user){
     currentUser=user;
     isGuest=false;
-    // Some providers (e.g. phone) may not have email
-    var emailKey=user.email?user.email.replace(/\./g,'_'):'';
-    db.ref('admins').once('value',function(snap){
-      var admins=snap.val()||{};
-      isAdmin=emailKey?!!admins[emailKey]:false;
-      hideAuth();
-      applyAdminUI();
-      if(!isFirebaseInited) initFirebase();
-    }).catch(function(e){
-      // If DB rules block anonymous read of admins, still let user in as non-admin
-      console.warn('Admin check failed:',e.message);
-      isAdmin=false;
-      hideAuth();
-      applyAdminUI();
-      if(!isFirebaseInited) initFirebase();
-    });
+    var userEmail=user.email||'';
+    var emailKey=userEmail.replace(/\./g,'_');
+    // Step 1: immediately let user in (don't block on DB read)
+    isAdmin=false;
+    hideAuth();
+    applyAdminUI();
+    if(!isFirebaseInited) initFirebase();
+    // Step 2: check admin status after login (non-blocking)
+    if(emailKey){
+      user.getIdToken(true).then(function(){
+        return db.ref('admins/'+emailKey).once('value');
+      }).then(function(snap){
+        var wasAdmin=isAdmin;
+        isAdmin=!!snap.val();
+        if(wasAdmin!==isAdmin) applyAdminUI();
+      }).catch(function(e){
+        console.warn('Admin check failed:',e.message);
+      });
+    }
   } else if(!isGuest){
+    currentUser=null;
+    isAdmin=false;
     showAuth();
   }
 });
