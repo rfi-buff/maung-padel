@@ -465,15 +465,8 @@ var auth=firebase.auth();
 auth.useDeviceLanguage();
 
 // Handle redirect result (for Google sign-in redirect fallback)
-auth.getRedirectResult().then(function(result){
-  if(result&&result.user){
-    // User signed in via redirect — onAuthStateChanged will handle the rest
-  }
-}).catch(function(e){
-  if(e&&e.message){
-    var errEl=document.getElementById('auth-err');
-    if(errEl) errEl.textContent=e.message;
-  }
+auth.getRedirectResult().catch(function(e){
+  if(e&&e.message) document.getElementById('auth-err').textContent=e.message;
 });
 
 var PALETTES=[
@@ -512,22 +505,15 @@ function toggleTheme(){
 
 // ── Auth UI ──
 function showAuth(){
-  var authEl=document.getElementById('auth-screen');
-  var appEl=document.getElementById('main-app');
-  if(authEl) authEl.style.display='flex';
-  if(appEl) appEl.style.display='none';
-  // Reset error
-  var errEl=document.getElementById('auth-err');
-  if(errEl) errEl.textContent='';
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('main-app').style.display='none';
 }
 
 function hideAuth(){
-  var authEl=document.getElementById('auth-screen');
-  var appEl=document.getElementById('main-app');
-  if(authEl){authEl.style.display='none';authEl.style.visibility='hidden';}
-  if(appEl){
-    appEl.style.cssText='display:flex;flex-direction:column;height:100%;position:relative;visibility:visible;';
-  }
+  document.getElementById('auth-screen').style.display='none';
+  var app=document.getElementById('main-app');
+  app.style.display='flex';
+  app.style.height='100%';
 }
 
 function toggleAuthMode(){
@@ -541,45 +527,30 @@ function toggleAuthMode(){
 
 function signInGoogle(){
   var provider=new firebase.auth.GoogleAuthProvider();
-  provider.addScope('email');
-  var errEl=document.getElementById('auth-err');
-  if(errEl) errEl.textContent='';
-  auth.signInWithPopup(provider).then(function(result){
-    // Success handled by onAuthStateChanged
-  }).catch(function(e){
+  auth.signInWithPopup(provider).catch(function(e){
+    // Fallback to redirect if popup blocked
     if(e.code==='auth/popup-blocked'||e.code==='auth/popup-closed-by-user'||e.code==='auth/cancelled-popup-request'){
-      // Fallback to redirect
       auth.signInWithRedirect(provider);
     } else {
-      if(errEl) errEl.textContent=e.message||'Google sign-in failed. Please try again.';
+      document.getElementById('auth-err').textContent=e.message;
     }
   });
 }
 
 function signInEmail(){
-  var errEl=document.getElementById('auth-err');
-  if(errEl) errEl.textContent='';
   var email=document.getElementById('auth-email').value.trim();
   var pass=document.getElementById('auth-password').value;
-  if(!email||!pass){if(errEl) errEl.textContent='Please enter email and password.';return;}
+  if(!email||!pass){document.getElementById('auth-err').textContent='Please enter email and password.';return;}
   var fn=authMode==='signin'?auth.signInWithEmailAndPassword.bind(auth):auth.createUserWithEmailAndPassword.bind(auth);
-  fn(email,pass).then(function(){
-    // Success handled by onAuthStateChanged
-  }).catch(function(e){
-    if(errEl) errEl.textContent=e.message||'Sign in failed. Please try again.';
+  fn(email,pass).catch(function(e){
+    document.getElementById('auth-err').textContent=e.message;
   });
 }
 
 function signOut(){
-  currentUser=null;
-  isAdmin=false;
+  auth.signOut();
   isGuest=false;
-  isFirebaseInited=false;
-  auth.signOut().then(function(){
-    showAuth();
-  }).catch(function(){
-    showAuth();
-  });
+  showAuth();
 }
 
 function continueAsGuest(){
@@ -650,24 +621,15 @@ auth.onAuthStateChanged(function(user){
   if(user){
     currentUser=user;
     isGuest=false;
-    isAdmin=false;
-    // Show app immediately - no DB dependency for login
-    hideAuth();
-    applyAdminUI();
-    if(!isFirebaseInited) initFirebase();
-    // Check admin in background after DB is ready
-    var emailKey=(user.email||'').replace(/\./g,'_');
-    if(emailKey){
-      setTimeout(function(){
-        db.ref('admins/'+emailKey).once('value',function(snap){
-          isAdmin=!!snap.val();
-          applyAdminUI();
-        });
-      }, 500);
-    }
+    var emailKey=user.email.replace(/\./g,'_');
+    db.ref('admins').once('value',function(snap){
+      var admins=snap.val()||{};
+      isAdmin=!!admins[emailKey];
+      hideAuth();
+      applyAdminUI();
+      if(!isFirebaseInited) initFirebase();
+    });
   } else if(!isGuest){
-    currentUser=null;
-    isAdmin=false;
     showAuth();
   }
 });
