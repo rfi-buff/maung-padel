@@ -226,7 +226,7 @@ body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:r
 </div>
 
 <!-- MAIN APP -->
-<div id="main-app" style="display:none;flex:1;flex-direction:column;height:100%;position:relative">
+<div id="main-app" style="display:none;flex-direction:column;height:100%;position:relative">
 
 <!-- REGISTER -->
 <div class="screen active" id="sc-register">
@@ -512,15 +512,22 @@ function toggleTheme(){
 
 // ── Auth UI ──
 function showAuth(){
-  document.getElementById('auth-screen').style.display='flex';
-  document.getElementById('main-app').style.display='none';
+  var authEl=document.getElementById('auth-screen');
+  var appEl=document.getElementById('main-app');
+  if(authEl) authEl.style.display='flex';
+  if(appEl) appEl.style.display='none';
+  // Reset error
+  var errEl=document.getElementById('auth-err');
+  if(errEl) errEl.textContent='';
 }
 
 function hideAuth(){
-  document.getElementById('auth-screen').style.display='none';
-  var app=document.getElementById('main-app');
-  app.style.display='flex';
-  app.style.height='100%';
+  var authEl=document.getElementById('auth-screen');
+  var appEl=document.getElementById('main-app');
+  if(authEl){authEl.style.display='none';authEl.style.visibility='hidden';}
+  if(appEl){
+    appEl.style.cssText='display:flex;flex-direction:column;height:100%;position:relative;visibility:visible;';
+  }
 }
 
 function toggleAuthMode(){
@@ -564,9 +571,15 @@ function signInEmail(){
 }
 
 function signOut(){
-  auth.signOut();
+  currentUser=null;
+  isAdmin=false;
   isGuest=false;
-  showAuth();
+  isFirebaseInited=false;
+  auth.signOut().then(function(){
+    showAuth();
+  }).catch(function(){
+    showAuth();
+  });
 }
 
 function continueAsGuest(){
@@ -637,24 +650,20 @@ auth.onAuthStateChanged(function(user){
   if(user){
     currentUser=user;
     isGuest=false;
-    var userEmail=user.email||'';
-    var emailKey=userEmail.replace(/\./g,'_');
-    // Step 1: immediately let user in (don't block on DB read)
     isAdmin=false;
+    // Show app immediately - no DB dependency for login
     hideAuth();
     applyAdminUI();
     if(!isFirebaseInited) initFirebase();
-    // Step 2: check admin status after login (non-blocking)
+    // Check admin in background after DB is ready
+    var emailKey=(user.email||'').replace(/\./g,'_');
     if(emailKey){
-      user.getIdToken(true).then(function(){
-        return db.ref('admins/'+emailKey).once('value');
-      }).then(function(snap){
-        var wasAdmin=isAdmin;
-        isAdmin=!!snap.val();
-        if(wasAdmin!==isAdmin) applyAdminUI();
-      }).catch(function(e){
-        console.warn('Admin check failed:',e.message);
-      });
+      setTimeout(function(){
+        db.ref('admins/'+emailKey).once('value',function(snap){
+          isAdmin=!!snap.val();
+          applyAdminUI();
+        });
+      }, 500);
     }
   } else if(!isGuest){
     currentUser=null;
