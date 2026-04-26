@@ -1038,7 +1038,7 @@ function courtHTML(ri,ci,court){
   var borderStyle=isPlaying?'border-color:rgba(0,201,141,0.3);':isDone?'border-color:var(--border);':'';
   var teamARow='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 14px 8px;gap:8px">'
     +'<div style="flex:1">'
-      +'<div style="font-size:14px;font-weight:'+(aWins?700:500)+';color:'+tAc+';margin-bottom:4px">'+court.teamA[0].name+(aWins?' ??':'')+'</div>'
+      +'<div style="font-size:14px;font-weight:'+(aWins?700:500)+';color:'+tAc+';margin-bottom:4px">'+court.teamA[0].name+(aWins?' 🏆':'')+'</div>'
       +'<div style="font-size:14px;font-weight:'+(aWins?700:500)+';color:'+tAc+'">'+court.teamA[1].name+'</div>'
     +'</div>'
     +(canScore
@@ -1057,7 +1057,7 @@ function courtHTML(ri,ci,court){
   +'</div>';
   var teamBRow='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 14px;gap:8px">'
     +'<div style="flex:1">'
-      +'<div style="font-size:14px;font-weight:'+(bWins?700:500)+';color:'+tBc+';margin-bottom:4px">'+court.teamB[0].name+(bWins?' ??':'')+'</div>'
+      +'<div style="font-size:14px;font-weight:'+(bWins?700:500)+';color:'+tBc+';margin-bottom:4px">'+court.teamB[0].name+(bWins?' 🏆':'')+'</div>'
       +'<div style="font-size:14px;font-weight:'+(bWins?700:500)+';color:'+tBc+'">'+court.teamB[1].name+'</div>'
     +'</div>'
     +(canScore
