@@ -302,7 +302,7 @@ body{display:flex;flex-direction:column;max-width:430px;margin:0 auto;position:r
     <div class="topbar-row">
       <div>
         <div class="topbar-title">Maung Padel</div>
-        <div class="topbar-sub">Rankings · 1st=10pts · 2nd=8pts · 3rd=6pts · 4th-10th=5pts</div>
+        <div class="topbar-sub">Maung Community</div>
       </div>
       <button class="theme-btn" onclick="toggleTheme()">🌙</button>
     </div>
@@ -1273,7 +1273,7 @@ function renderRankings(){
         +'<div class="rank-cell">'+p.played+'</div><div class="rank-cell won">'+p.won+'</div><div class="rank-cell lost">'+p.lost+'</div><div class="rank-cell pts">'+p.totalPts+'</div>'
       +'</div>';
     });
-    h+='</div><div style="font-size:10px;color:var(--text3);text-align:center;padding-bottom:8px">GP \u00b7 W \u00b7 L \u00b7 D \u00b7 Score</div>';
+    h+='</div><div style="font-size:10px;color:var(--text3);text-align:center;padding-bottom:8px">GP \u00b7 W \u00b7 L \u00b7 Score</div>';
   }else if(!rounds.length){h+='<div class="empty"><div class="empty-icon">&#127942;</div><div class="empty-title">No data yet</div><div class="empty-sub">Complete a session to see rankings</div></div>';}
   body.innerHTML=h;
   var rb=document.getElementById('admin-reset-btn');
