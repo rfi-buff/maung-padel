@@ -9,7 +9,7 @@
     v1.1.0 - Feature: Edit scores in History
     v1.2.0 - Feature: Smart rotation
     v1.3.0 - Feature: Per-court Start/Finalize,
-             max 2 courts playing at once,
+             max 1 court playing at once,
              Matches tab rename, print removed
 ==============================================
 -->
@@ -1115,7 +1115,7 @@ function courtHTML(ri,ci,court){
 function renderSession(){
   var active=players.filter(function(p){return p.active;});
   var meta=document.getElementById('session-meta');
-  if(meta)meta.textContent=rounds.length?(active.length+' players \u00b7 '+rounds.length+' rounds \u00b7 2 courts'):'No session generated yet';
+  if(meta)meta.textContent=rounds.length?(active.length+' players \u00b7 '+rounds.length+' rounds \u00b7 1 court'):'No session generated yet';
   var empty=document.getElementById('session-empty');
   if(empty)empty.style.display=rounds.length?'none':'block';
   var sa=document.getElementById('session-actions');
@@ -1414,7 +1414,7 @@ function printFixtures(){
     +'<button class="pbtn" onclick="window.print()">&#128424; Print / Save as PDF</button>'
     +'<div style="font-size:20px;font-weight:700;margin-bottom:3px">Maung Padel</div>'
     +'<div style="font-size:12px;color:#555;margin-bottom:2px">Match Fixtures \u00b7 '+today+'</div>'
-    +'<div style="font-size:11px;color:#555;margin-bottom:4px">'+active.length+' players \u00b7 '+rounds.length+' rounds \u00b7 2 courts</div>'
+    +'<div style="font-size:11px;color:#555;margin-bottom:4px">'+active.length+' players \u00b7 '+rounds.length+' rounds \u00b7 1 court</div>'
     +'<div style="font-size:11px;color:#555;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #111">Players: '+active.map(function(p){return p.name;}).join(' \u00b7 ')+'</div>'
     +body+'<div style="margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:10px">Maung Padel \u00b7 Maung Community \u00b7 '+today+'</div></body></html>';
   var win=window.open('','_blank');
